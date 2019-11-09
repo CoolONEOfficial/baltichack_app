@@ -18,7 +18,7 @@ class _PlaceCardState extends State<PlaceCardFake> {
         widget.gifUrl,
         height: 520,
         width: 300,
-        fit: BoxFit.fill,
+        fit: BoxFit.cover,
       ),
     );
   }

@@ -4,8 +4,10 @@ import 'package:video_player/video_player.dart';
 class PlaceCard extends StatefulWidget {
   final String videoUrl;
   final bool autoplay;
+  final Function() onClick;
 
-  PlaceCard({Key key, this.videoUrl, this.autoplay}) : super(key: key);
+  PlaceCard({Key key, this.videoUrl, this.autoplay, this.onClick})
+      : super(key: key);
 
   VideoPlayerController controller;
 
@@ -29,10 +31,15 @@ class _PlaceCardState extends State<PlaceCard> {
   Widget build(BuildContext ctx) {
     return ClipRRect(
       borderRadius: new BorderRadius.circular(30.0),
-      child: SizedBox(
-        width: 300,
-        height: 520,
-        child: VideoPlayer(widget.controller),
+      child: GestureDetector(
+        onTap: () {
+          widget.onClick();
+        },
+        child: SizedBox(
+          width: 300,
+          height: 520,
+          child: VideoPlayer(widget.controller),
+        ),
       ),
     );
   }

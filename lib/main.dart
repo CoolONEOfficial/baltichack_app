@@ -1,3 +1,4 @@
+import 'package:baltichack_app/screens/Catalog.dart';
 import 'package:baltichack_app/screens/Home.dart';
 import 'package:flutter/material.dart';
 
@@ -15,7 +16,8 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: ScreenHome.route,
       routes: {
-        ScreenHome.route: (context) => ScreenHome()
+        ScreenHome.route: (ctx) => ScreenHome(),
+        ScreenCatalog.route: (ctx) => ScreenCatalog()
       },
     );
   }
