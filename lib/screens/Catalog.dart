@@ -1,45 +1,32 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:location/location.dart';
 import 'package:baltichack_app/models/Place.dart';
+import 'package:baltichack_app/screens/Home.dart';
 import 'package:baltichack_app/screens/Place.dart';
 import 'package:baltichack_app/widgets/PlaceCard.dart';
+import 'package:enhanced_future_builder/enhanced_future_builder.dart';
+import 'package:http/http.dart' as http;
 import 'package:baltichack_app/widgets/PlaceCardFake.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-class ScreenCatalogArgs {}
+class ScreenCatalogArgs {
+  final MapEntry<Pref, List<Filter>> filters;
 
-class ScreenCatalog extends StatefulWidget {
-  static const route = '/screens/catalog';
+  StateSetter stateSetter;
 
-  @override
-  _ScreenCatalogState createState() => _ScreenCatalogState();
+  ScreenCatalogArgs(this.filters);
 }
 
-class _ScreenCatalogState extends State<ScreenCatalog> {
-  List tabs = ['my', 'friends', 'all'];
-
-  List gifs = List.generate(5, (i) => 'assets/gifs/${i + 1}.gif');
-
-  static const List videos = [
-    'https://file-examples.com/wp-content/uploads/2017/04/file_example_MP4_480_1_5MG.mp4',
-    'https://file-examples.com/wp-content/uploads/2017/04/file_example_MP4_640_3MG.mp4'
-  ];
-
-  bool selectedPlace = false;
-
-  static const startPage = 1;
-  List<PlaceCard> pages = List.generate(
-      videos.length,
-      (i) => PlaceCard(
-            autoplay: i == startPage,
-            videoUrl: videos[i],
-          ));
-  int prevPage = -1;
-
-  Route _createRoute(ScreenPlaceArgs args) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) =>
-          ScreenPlace(args),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return ScaleTransition(
+class ScreenCatalog extends StatefulWidget {
+  static Route createRouteCatalog(ScreenCatalogArgs args) => PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) =>
+        ScreenCatalog(args),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        ScaleTransition(
           scale: Tween<double>(
             begin: 0.0,
             end: 1.0,
@@ -50,23 +37,108 @@ class _ScreenCatalogState extends State<ScreenCatalog> {
             ),
           ),
           child: child,
-        );
-      },
-    );
-  }
+        ),
+  );
+
+  static const route = '/screens/catalog';
+
+  final ScreenCatalogArgs args;
+
+  const ScreenCatalog(this.args, {Key key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: PageView.builder(
+  _ScreenCatalogState createState() => _ScreenCatalogState();
+}
+
+class _ScreenCatalogState extends State<ScreenCatalog> {
+  ScreenCatalogArgs get args => widget.args;
+
+  Random random = new Random();
+
+  List tabs = ['my', 'friends', 'all'];
+
+  List gifs = List.generate(5, (i) => 'assets/gifs/${i + 1}.gif');
+
+  bool selectedPlace = false;
+
+  static const startPage = 1;
+  int prevPage = -1;
+  List<PlaceCard> pages;
+
+  Route createRoutePlace(ScreenPlaceArgs args) => PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            ScreenPlace(args),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return ScaleTransition(
+            scale: Tween<double>(
+              begin: 0.0,
+              end: 1.0,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.fastOutSlowIn,
+              ),
+            ),
+            child: child,
+          );
+        },
+      );
+
+  Future load() async {
+    var completer = new Completer();
+    LocationData currentLocation;
+
+    var location = new Location();
+    try {
+      currentLocation = (await location.getLocation());
+    } on Exception catch (e) {
+      currentLocation = null;
+    }
+    debugPrint('current: ' +
+        currentLocation.latitude.toString() +
+        ', ' +
+        currentLocation.longitude.toString());
+    final ss = await http.post('https://marine-brief.herokuapp.com/places',
+        body: jsonEncode({
+          "filter": args.filters.key.name,
+          "lat": currentLocation?.latitude ?? 59.883373,
+          "lng": currentLocation?.longitude ?? 30.336656,
+        }),
+        headers: {
+          "Accept": "application/json",
+          "content-type": "application/json"
+        });
+
+    int createCounter = -1;
+    pages = (json.decode(ss.body)).map<PlaceCard>((mPlace) {
+      debugPrint('ddddadadada' + mPlace.toString());
+      final Place place = Place.fromJson(mPlace);
+      debugPrint('place' + place.toString());
+      createCounter++;
+      return PlaceCard(
+        place,
+        autoplay: createCounter == startPage,
+        gifUrl: gifs[random.nextInt(gifs.length)],
+      );
+    }).toList();
+    debugPrint('pages: ' + pages.toString());
+
+    // At some time you need to complete the future:
+    completer.complete(ss);
+
+    return completer.future;
+  }
+
+  Widget buildCatalog(bool loading) => PageView.builder(
         onPageChanged: (i) {
+          if (loading) return;
           if (prevPage != -1) pages[prevPage].controller.pause();
           prevPage = i;
           setState(() {
             pages[i].controller.play();
           });
         },
-        itemCount: pages.length,
+        itemCount: loading ? 3 : pages.length,
         controller: PageController(
           initialPage: startPage,
           viewportFraction: 0.67,
@@ -78,21 +150,28 @@ class _ScreenCatalogState extends State<ScreenCatalog> {
             children: <Widget>[
               Positioned(
                 top: 14,
-                child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        Navigator.push(
-                            ctx,
-                            _createRoute(ScreenPlaceArgs(Place(
-                              'Кафе ресторан рога и копыта',
-                              'В этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудникаВ этой замечательной экспозиции была представлена новая пушкинская  коллекция, собранная к тому времени сотрудниками музея. Она составила основу московской пушкинианы.',
-                              TimeOfDay.now(),
-                              TimeOfDay.now(),
-                              'https://file-examples.com/wp-content/uploads/2017/04/file_example_MP4_480_1_5MG.mp4',
-                            ))));
-                      });
-                    },
-                    child: pages[i]),
+                child: loading
+                    ? Stack(
+                        alignment: AlignmentDirectional.center,
+                        children: <Widget>[
+                          PlaceCardFake(
+                            gifUrl: gifs[random.nextInt(gifs.length)],
+                          ),
+                          Center(
+                            child: CircularProgressIndicator(
+                              backgroundColor: Colors.white,
+                            ),
+                          )
+                        ],
+                      )
+                    : GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            Navigator.push(ctx,
+                                createRoutePlace(ScreenPlaceArgs(pages[i].model)));
+                          });
+                        },
+                        child: pages[i]),
               ),
               Positioned(
                 top: 14,
@@ -112,13 +191,19 @@ class _ScreenCatalogState extends State<ScreenCatalog> {
           ),
         ),
         scrollDirection: Axis.vertical,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: EnhancedFutureBuilder(
+        future: load(),
+        whenActive: buildCatalog(true),
+        whenNone: buildCatalog(true),
+        whenWaiting: buildCatalog(true),
+        whenDone: (_) => buildCatalog(false),
+        rememberFutureResult: true,
       ),
-//            FutureBuilder(
-//              future: http.get('https://marine-brief.herokuapp.com/greeting'),
-//              builder: (ctx, ss) => Text(
-//                  ss.connectionState == ConnectionState.done ? (ss.data as http.Response).body : '...'),
-//            ),
-      // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }

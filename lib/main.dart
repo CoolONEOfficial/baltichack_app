@@ -11,13 +11,15 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'MarineBrief app',
       theme: ThemeData(
+        scaffoldBackgroundColor: Color.fromRGBO(241, 242, 242, 1.0),
+        canvasColor: Color.fromRGBO(241, 242, 242, 1.0),
+        backgroundColor: Color.fromRGBO(241, 242, 242, 1.0),
         primarySwatch: Colors.grey,
-        fontFamily: 'Tahoma'
+        fontFamily: 'Telex'
       ),
       initialRoute: ScreenHome.route,
       routes: {
-        ScreenHome.route: (ctx) => ScreenHome(),
-        ScreenCatalog.route: (ctx) => ScreenCatalog()
+        ScreenHome.route: (ctx) => ScreenHome()
       },
     );
   }

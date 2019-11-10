@@ -1,5 +1,7 @@
 import 'package:baltichack_app/models/Place.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:maps_launcher/maps_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 class ScreenPlaceArgs {
@@ -38,74 +40,81 @@ class _ScreenPlaceState extends State<ScreenPlace> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
-      bottomSheet: Padding(
-        padding: const EdgeInsets.only(bottom: 8.0),
-        child: Center(
-            heightFactor: 1,
+      body: Stack(
+        children: <Widget>[
+          CustomScrollView(
+            slivers: <Widget>[
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                expandedHeight: 460.0,
+                flexibleSpace: FlexibleSpaceBar(
+                    background: VideoPlayer(widget.controller)),
+              ),
+              SliverList(
+                  delegate: SliverChildListDelegate([
+                Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Column(
+                          children: <Widget>[
+                            Text('350 \$', style: TextStyle(fontSize: 30)),
+                            SizedBox(height: 17),
+                            Text('Cost for 1', style: TextStyle(fontSize: 20)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(children: [
+                          Image.asset(
+                            'assets/icons/clock.png',
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.fitHeight,
+                          ),
+                          SizedBox(height: 17),
+                          Text(
+                              args.place.open.format(ctx) +
+                                  ' - ' +
+                                  args.place.close.format(ctx),
+                              style: TextStyle(fontSize: 20)),
+                        ]),
+                      )
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.only(left: 20, bottom: 30, right: 20),
+                  child: Text(args.place.description,
+                      style: TextStyle(
+                        fontSize: 19,
+                        color: Color.fromRGBO(0, 0, 0, 0.5),
+                      )),
+                ),
+                SizedBox(height: 47),
+              ])),
+            ],
+          ),
+          Positioned(
+            bottom: 20,
+            left: (MediaQuery.of(context).size.width / 2) - (335 / 2),
             child: MaterialButton(
               minWidth: 335,
               height: 47,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                  side: BorderSide()),
+                  borderRadius: BorderRadius.circular(15.0)),
               color: Color.fromRGBO(0, 52, 249, 1),
               child: Text(
-                'Find friends',
+                'Местоположение',
                 style: TextStyle(fontSize: 18, color: Colors.white),
               ),
-              onPressed: () {},
-            )),
-      ),
-      body: CustomScrollView(
-        slivers: <Widget>[
-          SliverAppBar(
-            leading: IconButton(
-                icon: Icon(Icons.filter_1),
-                onPressed: () {
-                  // Do something
-                }),
-            expandedHeight: 460.0,
-            floating: true,
-            pinned: true,
-            snap: true,
-            flexibleSpace:
-                FlexibleSpaceBar(background: VideoPlayer(widget.controller)),
-          ),
-          SliverList(
-              delegate: SliverChildListDelegate([
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Column(
-                      children: <Widget>[
-                        Text('350 \$', style: TextStyle(fontSize: 30)),
-                        SizedBox(height: 17),
-                        Text('Cost for 1', style: TextStyle(fontSize: 20)),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(children: [
-                      Icon(Icons.alarm, size: 32),
-                      SizedBox(height: 17),
-                      Text('10:00 - 24:00', style: TextStyle(fontSize: 20)),
-                    ]),
-                  )
-                ],
-              ),
+              onPressed: () {
+                MapsLauncher.launchCoordinates(args.place.lat, args.place.lng);
+              },
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 20, bottom: 20, right: 20),
-              child: Text(args.place.description,
-                  style: TextStyle(
-                    fontSize: 19,
-                    color: Color.fromRGBO(0, 0, 0, 0.5),
-                  )),
-            ),
-            SizedBox(height: 47),
-          ])),
+          )
         ],
       ),
     );

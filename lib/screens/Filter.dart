@@ -1,8 +1,9 @@
+import 'package:baltichack_app/screens/Catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:baltichack_app/screens/Home.dart';
 
 class ScreenFilterArgs {
-  final List<Filter> filters;
+  final MapEntry<Pref, List<Filter>> filters;
 
   ScreenFilterArgs(this.filters);
 }
@@ -22,15 +23,16 @@ class _ScreenFilterState extends State<ScreenFilter> {
   ScreenFilterArgs get args => widget.args;
 
   Widget _buildArrowIcon() => Padding(
-    child: Icon(Icons.keyboard_arrow_right),
-    padding: EdgeInsets.only(right: 14),
-  );
+        child: Icon(Icons.keyboard_arrow_right),
+        padding: EdgeInsets.only(right: 14),
+      );
 
   Widget _buildFilterWidget(
     BuildContext ctx,
     Filter mFilter, {
     Filter mParentFilter,
     StateSetter stateSetter,
+    StateSetter stateSetterParent,
   }) {
     Widget trailing;
     Function() onTap = () {};
@@ -42,9 +44,12 @@ class _ScreenFilterState extends State<ScreenFilter> {
 
         trailing = Checkbox(
           value: data.checked,
-          onChanged: (val) => (stateSetter != null
-              ? stateSetter
-              : setState)(() => data.checked = val),
+          onChanged: (val) {
+            data.checked = val;
+            setState(() {});
+            if (stateSetter != null) stateSetter(() {});
+            if (stateSetterParent != null) stateSetterParent(() {});
+          },
         );
         break;
       case FilterType.Radio:
@@ -59,17 +64,87 @@ class _ScreenFilterState extends State<ScreenFilter> {
       case FilterType.DialogNumber:
         trailing = _buildArrowIcon();
 
-        final List<Filter> data = mFilter.data;
+        final DataDialogNumber data = mFilter.data;
+
+        if (data.number != null) subtitle = Text(data.number.toString());
+
+        int num = 1;
+        TextEditingController numController = TextEditingController();
 
         onTap = () => showModalBottomSheet(
             context: ctx,
-            builder: (BuildContext ctx) => Container(
-                  child: Wrap(
-                    children: data
-                        .map<Widget>((_mFilter) => _buildFilterWidget(
-                            ctx, _mFilter,
-                            mParentFilter: mFilter))
-                        .toList(),
+            builder: (BuildContext ctx) => StatefulBuilder(
+                  builder: (ctx, StateSetter stateSetter) => SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0),
+                                  child: Row(
+                                    children: <Widget>[
+                                      IconButton(
+                                        icon: Icon(Icons.remove),
+                                        onPressed: () => stateSetter(() =>
+                                            numController.text =
+                                                (num - 1).toString()),
+                                      ),
+                                      Expanded(
+                                        child: TextField(
+                                          onChanged: (_num) => stateSetter(
+                                              () => num = int.parse(_num)),
+                                          controller: numController,
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            border: InputBorder.none,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.add),
+                                        onPressed: () => stateSetter(() =>
+                                            numController.text =
+                                                (num + 1).toString()),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: MaterialButton(
+                                minWidth: 335,
+                                height: 47,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5.0),
+                                    side: BorderSide(
+                                      color: Color.fromRGBO(82, 129, 185, 1.0),
+                                    )),
+                                color: Color.fromRGBO(82, 129, 185, 1.0),
+                                child: Text(
+                                  'Подтвердить',
+                                  style: TextStyle(
+                                      fontSize: 18, color: Colors.white),
+                                ),
+                                onPressed: () {
+                                  data.number = num;
+                                  Navigator.of(ctx).pop();
+                                },
+                              ),
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
                   ),
                 ));
         break;
@@ -78,17 +153,28 @@ class _ScreenFilterState extends State<ScreenFilter> {
 
         final List<Filter> data = mFilter.data;
 
+        List<String> subheaderArr = [];
+
+        for (Filter i in data) {
+          final DataCheck data = i.data;
+          if (data.checked) subheaderArr.add(i.name + '');
+        }
+
+        if (subheaderArr.isNotEmpty) subtitle = Text(subheaderArr.join(', '));
+
         onTap = () => showModalBottomSheet(
             context: ctx,
             builder: (BuildContext ctx) => StatefulBuilder(
                   builder: (BuildContext ctx, StateSetter stateSetter) {
                     return Container(
+                      padding: EdgeInsets.only(bottom: 10),
                       child: Wrap(
                         children: data
                             .map<Widget>((_mFilter) => _buildFilterWidget(
                                 ctx, _mFilter,
                                 mParentFilter: mFilter,
-                                stateSetter: stateSetter))
+                                stateSetter: setState,
+                                stateSetterParent: stateSetter))
                             .toList(),
                       ),
                     );
@@ -105,6 +191,7 @@ class _ScreenFilterState extends State<ScreenFilter> {
         onTap = () => showModalBottomSheet(
             context: ctx,
             builder: (BuildContext ctx) => Container(
+                  padding: EdgeInsets.only(bottom: 10),
                   child: Wrap(
                     children: data.filters
                         .map<Widget>((_mFilter) => _buildFilterWidget(
@@ -128,6 +215,27 @@ class _ScreenFilterState extends State<ScreenFilter> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
+      bottomSheet: Center(
+        heightFactor: 1,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: MaterialButton(
+            minWidth: 335,
+            height: 47,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5.0), side: BorderSide()),
+            color: Colors.black,
+            child: Text(
+              'Подтвердить',
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).push(ScreenCatalog.createRouteCatalog(
+                  ScreenCatalogArgs(args.filters)));
+            },
+          ),
+        ),
+      ),
       appBar: AppBar(
         title: Text('Filters'),
         backgroundColor: Colors.white,
@@ -136,7 +244,7 @@ class _ScreenFilterState extends State<ScreenFilter> {
       body: ListView(
         shrinkWrap: true,
         scrollDirection: Axis.vertical,
-        children: args.filters
+        children: args.filters.value
             .map<Widget>((mFilter) => _buildFilterWidget(ctx, mFilter))
             .toList(),
       ),
